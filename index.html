@@ -271,8 +271,8 @@
             const modalMessage = document.getElementById('modal-message');
             const modalOkButton = document.getElementById('modal-ok-button');
 
-            // SlackのIncoming Webhook URL
-            const SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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";
+            // ★★★★★ ここに、GASで取得したウェブアプリのURLを貼り付けます ★★★★★
+            const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzkMb5L2RF0AHjODFHYN1P309n_k9JcCguwbWGx66Wcv9smuYncjhQImOwh7QhuwAdY/exec";
             
             const originalBackground = 'url("https://placehold.co/1024x768/000/fff?text=Starfield+Background")';
             const completedBackground = 'url("https://placehold.co/1024x768/000/fff?text=CONGRATULATIONS!")';
@@ -731,6 +731,11 @@
 
             // Event listener for submit button
             submitButton.addEventListener('click', async () => {
+                if (GAS_WEB_APP_URL === "ここにGASのURLを貼り付けてください") {
+                    showModal("エラー: HTMLコードにGASのURLが設定されていません。");
+                    return;
+                }
+
                 statusMessage.classList.remove('hidden');
                 statusMessage.className = 'text-center text-sm mt-4 text-gray-400';
                 statusMessage.textContent = 'Slackに送信中...';
@@ -779,27 +784,24 @@
                 };
 
                 try {
-                    const response = await fetch(SLACK_WEBHOOK_URL, {
+                    const response = await fetch(GAS_WEB_APP_URL, {
                         method: 'POST',
+                        mode: 'no-cors', // CORSエラーを回避するための設定
                         headers: {
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'text/plain;charset=utf-8',
                         },
-                        body: JSON.stringify(payload),
+                        body: JSON.stringify(payload)
                     });
                     
-                    if (response.ok) {
-                        statusMessage.className = 'text-center text-sm mt-4 text-green-400';
-                        statusMessage.textContent = 'ミッションをSlackに報告しました！';
-                    } else {
-                        const result = await response.text();
-                        statusMessage.className = 'text-center text-sm mt-4 text-red-400';
-                        statusMessage.textContent = '送信に失敗しました: ' + (result || '不明なエラー');
-                        console.error('Send error:', result);
-                    }
+                    // no-corsモードではレスポンス内容を確認できないため、
+                    // fetchが成功した時点で「送信成功」とみなします。
+                    statusMessage.className = 'text-center text-sm mt-4 text-green-400';
+                    statusMessage.textContent = 'ミッションをSlackに報告しました！';
+
                 } catch (error) {
                     statusMessage.className = 'text-center text-sm mt-4 text-red-400';
-                    statusMessage.textContent = '通信に失敗しました。Webhook URLを確認してください。';
-                    console.error('通信エラー:', error);
+                    statusMessage.textContent = '送信に失敗しました。GASの設定やURLを確認してください。';
+                    console.error('送信エラー:', error);
                 }
             });
 
