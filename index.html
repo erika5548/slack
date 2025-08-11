@@ -56,7 +56,7 @@
             border-left-color: #38a169;
             opacity: 0.7;
         }
-        .task-item.completed .task-text-container label, .task-item.completed .task-text-container .task-name-editable, .task-item.completed .task-text-container .additional-input {
+        .task-item.completed .task-name-editable {
             text-decoration: line-through;
             color: #718096;
         }
@@ -411,21 +411,33 @@
             }
 
             function attachEventListeners(containerElement) {
-                containerElement.querySelectorAll('.additional-input, .additional-select, .note-input, input[type="checkbox"]').forEach(el => {
+                containerElement.querySelectorAll('.additional-input, .additional-select, .note-input').forEach(el => {
                     el.addEventListener('change', (event) => {
                         const target = event.target;
                         const index = parseInt(target.dataset.index, 10);
                         const type = target.dataset.type;
-                        const key = target.dataset.key || 'completed';
+                        const key = target.dataset.key;
+                        const taskList = type === 'daily' ? dailyTasks : summerTasks;
+                        taskList[index][key] = target.value;
+                        saveData();
+                    });
+                });
+
+                containerElement.querySelectorAll('input[type="checkbox"]').forEach(el => {
+                    el.addEventListener('change', (event) => {
+                        const target = event.target;
+                        const li = target.closest('.task-item');
+                        const idParts = target.id.split('-');
+                        const type = idParts[0];
+                        const index = parseInt(idParts[2], 10);
                         const taskList = type === 'daily' ? dailyTasks : summerTasks;
                         
-                        if (target.type === 'checkbox') {
-                            taskList[index][key] = target.checked;
-                        } else {
-                            taskList[index][key] = target.value;
+                        if(taskList[index]) {
+                            taskList[index].completed = target.checked;
+                            li.classList.toggle('completed', target.checked);
+                            saveData();
+                            if(type === 'daily') checkCompletion();
                         }
-                        saveData();
-                        if(type === 'daily') checkCompletion();
                     });
                 });
 
@@ -505,7 +517,7 @@
                 summerTasks.forEach(task => {
                     const status = task.completed ? ':white_check_mark:' : ':x:';
                     let details = '';
-                    if (task.type === 'count') details += ` (完了数: ${task.value} / ${task.required})`;
+                    if (task.type === 'count') details += ` (完了数: ${task.value || 0} / ${task.required})`;
                     messageText += `\n${status} ${task.name}${details}`;
                     if (task.note) messageText += `\n    > 備考: ${task.note}`;
                 });
