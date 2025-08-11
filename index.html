@@ -64,7 +64,7 @@
             transform: scale(1.8); /* チェックボックスを大きくしました */
             accent-color: #48bb78;
         }
-        .report-button, .reset-button {
+        .report-button {
             transition: transform 0.2s, box-shadow 0.2s;
             padding: 1rem 1.5rem; /* ボタンを大きくしました */
             font-size: 1.1rem;
@@ -72,10 +72,6 @@
         .report-button:hover {
             transform: scale(1.05);
             box-shadow: 0 0 15px #38a169;
-        }
-        .reset-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px #f6e05e;
         }
         .mission-log {
             font-size: 1.5rem;
@@ -174,15 +170,6 @@
         <p id="current-date" class="text-center text-xl font-bold text-gray-200 mb-4"></p>
         <p class="text-center text-sm text-gray-400 mb-8">Complete today's missions and aim for the stars!</p>
 
-        <div class="mb-8 flex flex-col items-center">
-            <button id="reset-button" class="reset-button bg-yellow-500 text-gray-900 font-bold py-3 px-6 rounded-full shadow-lg hover:bg-yellow-400 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.356 2H15" />
-                </svg>
-                Set New Missions
-            </button>
-        </div>
-
         <ul id="checklist" class="space-y-4">
             <!-- Daily missions will be inserted here -->
         </ul>
@@ -234,7 +221,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const checklist = document.getElementById('checklist');
-            const resetButton = document.getElementById('reset-button');
             const submitButton = document.getElementById('submit-button');
             const completionMessage = document.getElementById('completion-message');
             const body = document.body;
@@ -383,25 +369,25 @@
                     let additionalInputHtml = '';
                     
                     if (task.type === 'checkbox') {
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" data-index="${index}" data-type="${type}" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'weight') {
                         additionalInputHtml = `<select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1" data-index="${index}" data-type="${type}" data-key="value">${Array.from({ length: 101 }, (_, i) => `<option value="${(30 + i * 0.1).toFixed(1)}" ${task.value == (30 + i * 0.1).toFixed(1) ? 'selected' : ''}>${(30 + i * 0.1).toFixed(1)}kg</option>`).join('')}</select>`;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" data-index="${index}" data-type="${type}" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'running' || task.type === 'multiplication') {
                         additionalInputHtml = `<div class="flex items-center space-x-2 mt-2"><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="min"><option value="">分</option>${Array.from({ length: 16 }, (_, i) => `<option value="${5 + i}" ${task.min == 5 + i ? 'selected' : ''}>${5 + i}分</option>`).join('')}</select><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="sec"><option value="">秒</option>${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${task.sec == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}</select></div>`;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" data-index="${index}" data-type="${type}" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'reading') {
                         additionalInputHtml = `<input type="text" class="additional-input bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" placeholder="読んだ本の内容" value="${task.book || ''}" data-index="${index}" data-type="${type}" data-key="book"><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" data-index="${index}" data-type="${type}" data-key="count"><option value="">回数</option>${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.count == i + 1 ? 'selected' : ''}>${i + 1}回</option>`).join('')}</select>`;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" data-index="${index}" data-type="${type}" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'page-range') {
                         additionalInputHtml = `<div class="flex items-center space-x-2 mt-2"><label class="text-sm text-gray-400">P</label><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="start"><option value="">開始</option>${Array.from({ length: task.max }, (_, i) => `<option value="${i + 1}" ${task.start == i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select><label class="text-sm text-gray-400">〜P</label><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="end"><option value="">終了</option>${Array.from({ length: task.max }, (_, i) => `<option value="${i + 1}" ${task.end == i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></div>`;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" data-index="${index}" data-type="${type}" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'math-exam') {
                         additionalInputHtml = `<div class="flex items-center space-x-2 mt-2"><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="year"><option value="">年</option>${Array.from({ length: 10 }, (_, i) => `<option value="${2020 + i}" ${task.year == 2020 + i ? 'selected' : ''}>${2020 + i}年</option>`).join('')}</select><select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="times"><option value="">回</option>${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.times == i + 1 ? 'selected' : ''}>第${i + 1}回</option>`).join('')}</select></div>`;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" data-index="${index}" data-type="${type}" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'count') {
                         const remaining = task.required - (task.value || 0);
-                        additionalInputHtml = `<div class="flex items-center mt-2"><span class="text-gray-400 mr-2">完了: ${task.value || 0} / ${task.required}</span><button class="count-down-button bg-red-500 text-white rounded-full h-8 w-8 text-xl flex items-center justify-center hover:bg-red-400 mr-2">-</button><button class="count-up-button bg-blue-500 text-white rounded-full h-8 w-8 text-xl flex items-center justify-center hover:bg-blue-400" data-index="${index}" data-type="${type}">+</button></div><span class="text-sm text-red-400 mt-1">${remaining > 0 ? `あと${remaining}回` : '完了！'}</span>`;
+                        additionalInputHtml = `<div class="flex items-center mt-2"><span class="text-gray-400 mr-2">完了: ${task.value || 0} / ${task.required}</span><button class="count-down-button bg-red-500 text-white rounded-full h-8 w-8 text-xl flex items-center justify-center hover:bg-red-400 mr-2" data-index="${index}" data-type="${type}">-</button><button class="count-up-button bg-blue-500 text-white rounded-full h-8 w-8 text-xl flex items-center justify-center hover:bg-blue-400" data-index="${index}" data-type="${type}">+</button></div><span class="text-sm text-red-400 mt-1">${remaining > 0 ? `あと${remaining}回` : '完了！'}</span>`;
                     }
 
                     li.innerHTML = `<div class="flex flex-col md:flex-row md:items-start md:justify-between"><div class="flex items-start flex-grow w-full md:w-2/3">${inputHtml}<span class="task-icon text-blue-400 mt-1">${getIconSvg(task.name)}</span><div class="flex-grow cursor-pointer flex flex-col"><label for="${type}-task-${index}" class="text-lg flex-grow"><span class="task-name-editable flex-grow" contenteditable="true">${task.name}</span></label>${additionalInputHtml}</div></div><div class="mt-2 md:mt-0 md:ml-4 flex-shrink-0 w-full md:w-1/3"><label class="note-label">備考:</label><textarea class="note-input w-full" rows="1" placeholder="メモを入力" data-index="${index}" data-type="${type}" data-key="note">${task.note || ''}</textarea></div></div>`;
@@ -427,9 +413,8 @@
                     el.addEventListener('change', (event) => {
                         const target = event.target;
                         const li = target.closest('.task-item');
-                        const idParts = target.id.split('-');
-                        const type = idParts[0];
-                        const index = parseInt(idParts[2], 10);
+                        const index = parseInt(target.dataset.index, 10);
+                        const type = target.dataset.type;
                         const taskList = type === 'daily' ? dailyTasks : summerTasks;
                         
                         if(taskList[index]) {
@@ -457,9 +442,8 @@
 
                 containerElement.querySelectorAll('.count-down-button').forEach(button => {
                     button.addEventListener('click', (event) => {
-                        const buttonEl = event.target.closest('button') || event.target;
-                        const index = parseInt(buttonEl.dataset.index, 10);
-                        const type = buttonEl.dataset.type;
+                        const index = parseInt(event.target.dataset.index, 10);
+                        const type = event.target.dataset.type;
                         const taskList = type === 'daily' ? dailyTasks : summerTasks;
                         if (taskList[index].value > 0) {
                             taskList[index].value--;
@@ -489,7 +473,7 @@
             }
             
             // --- Global Event Listeners ---
-            resetButton.addEventListener('click', () => {
+            function resetDailyMissions() {
                 dailyTasks.forEach(task => {
                     task.completed = false;
                     task.note = '';
@@ -502,7 +486,7 @@
                 saveData();
                 renderTasks(dailyTasks, checklist, 'daily');
                 checkCompletion();
-            });
+            }
 
             submitButton.addEventListener('click', async () => {
                 statusMessage.classList.remove('hidden');
@@ -551,6 +535,12 @@
                     });
                     statusMessage.className = 'text-center text-sm mt-4 text-green-400';
                     statusMessage.textContent = 'ミッションをSlackに報告しました！';
+                    
+                    setTimeout(() => {
+                        resetDailyMissions();
+                        statusMessage.textContent = '報告が完了し、ミッションがリセットされました。';
+                    }, 1500);
+
                 } catch (error) {
                     statusMessage.className = 'text-center text-sm mt-4 text-red-400';
                     statusMessage.textContent = '送信に失敗しました。GASの設定やURLを確認してください。';
