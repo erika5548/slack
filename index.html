@@ -231,570 +231,508 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const checklist = document.getElementById('checklist');
-            const resetButton = document.getElementById('reset-button');
-            const submitButton = document.getElementById('submit-button');
-            const completionMessage = document.getElementById('completion-message');
-            const body = document.body;
-            const currentDateElement = document.getElementById('current-date');
-            const summerVacationChecklist = document.getElementById('summer-vacation-checklist');
-            const daysLeftElement = document.getElementById('days-left');
-            const statusMessage = document.getElementById('status-message');
-            const todaysFeelingsSelect = document.getElementById('todays-feelings');
-            const otherFeelingsNote = document.getElementById('other-feelings-note');
-            const customModal = document.getElementById('custom-modal');
-            const modalMessage = document.getElementById('modal-message');
-            const modalOkButton = document.getElementById('modal-ok-button');
+    <script type="module">
+        // Firebase (オンラインデータベース) のライブラリを読み込みます
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-            // ★★★★★ GASで取得したウェブアプリのURL ★★★★★
-            const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxx-PCCM_ZFQ4dvWyukRc2FqZQ8ipSBxEYvjgAjPK2SOeDGP3bmQcjh72bVs6-5qN1v/exec";
+        // DOM Elements
+        const checklist = document.getElementById('checklist');
+        const resetButton = document.getElementById('reset-button');
+        const submitButton = document.getElementById('submit-button');
+        const completionMessage = document.getElementById('completion-message');
+        const body = document.body;
+        const currentDateElement = document.getElementById('current-date');
+        const summerVacationChecklist = document.getElementById('summer-vacation-checklist');
+        const daysLeftElement = document.getElementById('days-left');
+        const statusMessage = document.getElementById('status-message');
+        const todaysFeelingsSelect = document.getElementById('todays-feelings');
+        const otherFeelingsNote = document.getElementById('other-feelings-note');
+        const customModal = document.getElementById('custom-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const modalOkButton = document.getElementById('modal-ok-button');
+
+        // Configs
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxx-PCCM_ZFQ4dvWyukRc2FqZQ8ipSBxEYvjgAjPK2SOeDGP3bmQcjh72bVs6-5qN1v/exec";
+        const originalBackground = 'url("https://placehold.co/1024x768/000/fff?text=Starfield+Background")';
+        const completedBackground = 'url("https://placehold.co/1024x768/000/fff?text=CONGRATULATIONS!")';
+
+        // Initial Data
+        const dailyInitialTasks = [
+            { name: '今日の体重', completed: false, value: '', note: '', type: 'weight' },
+            { name: 'ハミガキチェック', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: '今日のランニング', completed: false, min: '', sec: '', note: '', type: 'running' },
+            { name: '逆上がり練習チェックリスト', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: '音読', completed: false, book: '', count: '', note: '', type: 'reading' },
+            { name: '漢字スキル', completed: false, start: '', end: '', note: '', type: 'page-range', max: 70 },
+            { name: 'ITEM', completed: false, start: '', end: '', note: '', type: 'page-range', max: 250 },
+            { name: '九九チャレンジ', completed: false, min: '', sec: '', note: '', type: 'multiplication' },
+            { name: 'らっこたん', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: 'ソロタッチ', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: 'thinkthink', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: '算数検定の問題集', completed: false, year: '', times: '', note: '', type: 'math-exam' },
+            { name: 'nobu先生', completed: false, start: '', end: '', note: '', type: 'page-range', max: 200 },
+            { name: 'ELSA speak', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: 'TODO math', completed: false, value: '', note: '', type: 'checkbox' },
+        ];
+        const summerInitialTasks = [
+            { name: '読書記録', completed: false, value: 0, note: '', required: 4, type: 'count' },
+            { name: '絵日記', completed: false, value: 0, note: '', required: 2, type: 'count' },
+            { name: '川調べ', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: 'shape book', completed: false, value: '', note: '', type: 'checkbox' },
+            { name: 'show & tell', completed: false, value: '', note: '', type: 'checkbox' },
+        ];
+
+        // App State
+        let dailyTasks = [];
+        let summerTasks = [];
+        let todaysFeelings = '';
+        let otherFeelings = '';
+        let db, auth, userId;
+        let unsubscribe; // Listener for real-time updates
+
+        // --- Helper Functions ---
+        function getIconSvg(taskName) {
+            const name = taskName.toLowerCase();
+            if (name.includes('体重')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-activity"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>`;
+            } else if (name.includes('ハミガキ')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check-square"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
+            } else if (name.includes('ランニング') || name.includes('九九')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+            } else if (name.includes('逆上がり')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 14h6.5M14 10h6.5M21 10A9 9 0 0 0 6 3.4M3 14a9 9 0 0 0 15 6.6"></path></svg>`;
+            } else if (name.includes('音読') || name.includes('読書') || name.includes('スキル') || name.includes('ドリ')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book-open"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
+            } else if (name.includes('算数検定') || name.includes('nobu先生') || name.includes('todo math') || name.includes('elsa')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+            } else if (name.includes('らっこたん') || name.includes('ソロタッチ') || name.includes('thinkthink')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-list"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`;
+            } else if (name.includes('読書記録') || name.includes('絵日記')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`;
+            } else if (name.includes('川調べ')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map-pin"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+            } else if (name.includes('shape book')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-grid"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
+            } else if (name.includes('show & tell')) {
+                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
+            }
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        }
+
+        // --- Firebase Initialization ---
+        async function initializeFirebase() {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
             
-            const originalBackground = 'url("https://placehold.co/1024x768/000/fff?text=Starfield+Background")';
-            const completedBackground = 'url("https://placehold.co/1024x768/000/fff?text=CONGRATULATIONS!")';
-
-            // Function to show custom modal instead of alert
-            function showModal(message) {
-                modalMessage.textContent = message;
-                customModal.style.display = 'flex';
+            if (!firebaseConfig.apiKey) {
+                showModal("Firebaseの設定が読み込めませんでした。");
+                return;
             }
 
-            modalOkButton.addEventListener('click', () => {
-                customModal.style.display = 'none';
-            });
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
 
-            // Function to return SVG data for a task based on its name
-            function getIconSvg(taskName) {
-                const name = taskName.toLowerCase();
-                if (name.includes('体重')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-activity"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>`;
-                } else if (name.includes('ハミガキ')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check-square"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
-                } else if (name.includes('ランニング') || name.includes('九九')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
-                } else if (name.includes('逆上がり')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 14h6.5M14 10h6.5M21 10A9 9 0 0 0 6 3.4M3 14a9 9 0 0 0 15 6.6"></path></svg>`;
-                } else if (name.includes('音読') || name.includes('読書') || name.includes('スキル') || name.includes('ドリ')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book-open"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
-                } else if (name.includes('算数検定') || name.includes('nobu先生') || name.includes('todo math') || name.includes('elsa')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
-                } else if (name.includes('らっこたん') || name.includes('ソロタッチ') || name.includes('thinkthink')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-list"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`;
-                } else if (name.includes('読書記録') || name.includes('絵日記')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-3"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`;
-                } else if (name.includes('川調べ')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map-pin"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
-                } else if (name.includes('shape book')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-grid"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
-                } else if (name.includes('show & tell')) {
-                    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`;
-                }
-                return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-            }
-
-            // Daily Mission Tasks
-            let dailyInitialTasks = [
-                { name: '今日の体重', completed: false, value: '', note: '', type: 'weight' },
-                { name: 'ハミガキチェック', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: '今日のランニング', completed: false, min: '', sec: '', note: '', type: 'running' },
-                { name: '逆上がり練習チェックリスト', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: '音読', completed: false, book: '', count: '', note: '', type: 'reading' },
-                { name: '漢字スキル', completed: false, start: '', end: '', note: '', type: 'page-range', max: 70 },
-                { name: 'ITEM', completed: false, start: '', end: '', note: '', type: 'page-range', max: 250 },
-                { name: '九九チャレンジ', completed: false, min: '', sec: '', note: '', type: 'multiplication' },
-                { name: 'らっこたん', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: 'ソロタッチ', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: 'thinkthink', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: '算数検定の問題集', completed: false, year: '', times: '', note: '', type: 'math-exam' },
-                { name: 'nobu先生', completed: false, start: '', end: '', note: '', type: 'page-range', max: 200 },
-                { name: 'ELSA speak', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: 'TODO math', completed: false, value: '', note: '', type: 'checkbox' },
-            ];
-            
-            // Summer Vacation Home Work Tasks
-            const summerInitialTasks = [
-                { name: '読書記録', completed: false, value: 0, note: '', required: 4, type: 'count' },
-                { name: '絵日記', completed: false, value: 0, note: '', required: 2, type: 'count' },
-                { name: '川調べ', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: 'shape book', completed: false, value: '', note: '', type: 'checkbox' },
-                { name: 'show & tell', completed: false, value: '', note: '', type: 'checkbox' },
-            ];
-
-            const today = new Date();
-            const todayDateString = today.toLocaleDateString('ja-JP', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                weekday: 'short'
-            });
-            currentDateElement.textContent = todayDateString;
-
-            // 夏休み終了日を8/31に設定
-            const summerEndDate = new Date(today.getFullYear(), 7, 31);
-            const remainingDays = Math.ceil((summerEndDate - today) / (1000 * 60 * 60 * 24));
-            daysLeftElement.textContent = `夏休み終了まで、あと ${remainingDays} 日！`;
-
-            let dailyTasks;
-            let summerTasks;
-            let todaysFeelings = '';
-            let otherFeelings = '';
-
-            const savedDailyTasks = JSON.parse(localStorage.getItem('dailyTasks'));
-            const savedSummerTasks = JSON.parse(localStorage.getItem('summerTasks'));
-            const savedFeelings = localStorage.getItem('todaysFeelings');
-            const savedOtherFeelings = localStorage.getItem('otherFeelings');
-            const lastResetDate = localStorage.getItem('lastResetDate');
-            const todayISOString = today.toISOString().slice(0, 10);
-
-            if (lastResetDate !== todayISOString) {
-                dailyTasks = dailyInitialTasks;
-                localStorage.setItem('lastResetDate', todayISOString);
-                saveTasks('daily', dailyTasks);
-                todaysFeelings = todaysFeelingsSelect.value;
-                otherFeelings = '';
-            } else {
-                if (savedDailyTasks) {
-                    dailyTasks = savedDailyTasks;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
+                    await signInAnonymously(auth);
+                }
+                
+                userId = auth.currentUser.uid;
+                setupRealtimeListener(appId, userId);
+
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+                showModal("データベースへの接続に失敗しました。");
+            }
+        }
+
+        // --- Real-time Data Listener ---
+        function setupRealtimeListener(appId, uid) {
+            const dataDocRef = doc(db, `artifacts/${appId}/users/${uid}/tasks/data`);
+
+            if (unsubscribe) unsubscribe(); // Detach any old listener
+
+            unsubscribe = onSnapshot(dataDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    dailyTasks = data.dailyTasks || dailyInitialTasks;
+                    summerTasks = data.summerTasks || summerInitialTasks;
+                    todaysFeelings = data.todaysFeelings || '最高！今日も目標達成！';
+                    otherFeelings = data.otherFeelings || '';
+                } else {
+                    // First time user, create initial data
                     dailyTasks = dailyInitialTasks;
-                }
-                if (savedFeelings) {
-                    todaysFeelings = savedFeelings;
-                    todaysFeelingsSelect.value = savedFeelings;
-                }
-                if (savedOtherFeelings) {
-                    otherFeelings = savedOtherFeelings;
-                    otherFeelingsNote.value = savedOtherFeelings;
-                }
-            }
-            
-            if (savedSummerTasks) {
-                summerTasks = savedSummerTasks;
-            } else {
-                summerTasks = summerInitialTasks;
-            }
-
-            // 感想欄の表示切り替え
-            if (todaysFeelings === 'その他') {
-                otherFeelingsNote.classList.remove('hidden');
-            } else {
-                otherFeelingsNote.classList.add('hidden');
-                otherFeelingsNote.value = '';
-            }
-
-            function saveTasks(type, tasksToSave) {
-                if (type === 'daily') {
-                    localStorage.setItem('dailyTasks', JSON.stringify(tasksToSave));
-                } else if (type === 'summer') {
-                    localStorage.setItem('summerTasks', JSON.stringify(tasksToSave));
-                }
-            }
-            
-            function saveFeelings() {
-                localStorage.setItem('todaysFeelings', todaysFeelingsSelect.value);
-                localStorage.setItem('otherFeelings', otherFeelingsNote.value);
-            }
-
-            function checkCompletion() {
-                const allCompleted = dailyTasks.every(task => task.completed);
-                if (allCompleted && dailyTasks.length > 0) {
-                    completionMessage.classList.remove('hidden');
-                    body.style.backgroundImage = completedBackground;
-                } else {
-                    completionMessage.classList.add('hidden');
-                    body.style.backgroundImage = originalBackground;
-                }
-            }
-
-            function renderTasks(tasksToRender, containerElement, type) {
-                containerElement.innerHTML = '';
-                if (tasksToRender.length === 0) {
-                    containerElement.innerHTML = '<li class="text-center text-gray-500">No missions today.</li>';
-                    return;
+                    summerTasks = summerInitialTasks;
+                    todaysFeelings = '最高！今日も目標達成！';
+                    otherFeelings = '';
+                    saveTasksToDB(); // Save initial state
                 }
                 
-                tasksToRender.forEach((task, index) => {
-                    const li = document.createElement('li');
-                    li.className = `task-item p-4 rounded-lg flex flex-col shadow-md ${task.completed ? 'completed' : ''}`;
-                    
-                    let inputHtml = '';
-                    let additionalInputHtml = '';
-                    
-                    // Task-specific input generation
-                    if (task.type === 'checkbox') {
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'weight') {
-                        additionalInputHtml = `
-                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1" data-index="${index}" data-type="${type}" data-key="value">
-                                ${Array.from({ length: 101 }, (_, i) => {
-                                    const kg = 30 + i * 0.1;
-                                    return `<option value="${kg.toFixed(1)}" ${task.value == kg.toFixed(1) ? 'selected' : ''}>${kg.toFixed(1)}kg</option>`;
-                                }).join('')}
-                            </select>
-                        `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'running') {
-                        additionalInputHtml = `
-                            <div class="flex items-center space-x-2 mt-2">
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="min">
-                                    <option value="">分</option>
-                                    ${Array.from({ length: 16 }, (_, i) => `<option value="${5 + i}" ${task.min == 5 + i ? 'selected' : ''}>${5 + i}分</option>`).join('')}
-                                </select>
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="sec">
-                                    <option value="">秒</option>
-                                    ${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${task.sec == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}
-                                </select>
-                            </div>
-                        `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'reading') {
-                        additionalInputHtml = `
-                            <input type="text" class="additional-input bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" placeholder="読んだ本の内容" value="${task.book}" data-index="${index}" data-type="${type}" data-key="book">
-                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" data-index="${index}" data-type="${type}" data-key="count">
-                                <option value="">回数</option>
-                                ${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.count == i + 1 ? 'selected' : ''}>${i + 1}回</option>`).join('')}
-                            </select>
-                        `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'page-range') {
-                        additionalInputHtml = `
-                            <div class="flex items-center space-x-2 mt-2">
-                                <label class="text-sm text-gray-400">P</label>
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="start">
-                                    <option value="">開始</option>
-                                    ${Array.from({ length: task.max }, (_, i) => `<option value="${i + 1}" ${task.start == i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}
-                                </select>
-                                <label class="text-sm text-gray-400">〜P</label>
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="end">
-                                    <option value="">終了</option>
-                                    ${Array.from({ length: task.max }, (_, i) => `<option value="${i + 1}" ${task.end == i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}
-                                </select>
-                            </div>
-                        `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'multiplication') {
-                        additionalInputHtml = `
-                            <div class="flex items-center space-x-2 mt-2">
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="min">
-                                    <option value="">分</option>
-                                    ${Array.from({ length: 5 }, (_, i) => `<option value="${i}" ${task.min == i ? 'selected' : ''}>${i}分</option>`).join('')}
-                                </select>
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="sec">
-                                    <option value="">秒</option>
-                                    ${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${task.sec == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}
-                                </select>
-                            </div>
-                        `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'math-exam') {
-                        additionalInputHtml = `
-                            <div class="flex items-center space-x-2 mt-2">
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="year">
-                                    <option value="">年</option>
-                                    ${Array.from({ length: 10 }, (_, i) => {
-                                        const year = 2020 + i;
-                                        return `<option value="${year}" ${task.year == year ? 'selected' : ''}>${year}年</option>`;
-                                    }).join('')}
-                                </select>
-                                <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="times">
-                                    <option value="">回</option>
-                                    ${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.times == i + 1 ? 'selected' : ''}>第${i + 1}回</option>`).join('')}
-                                </select>
-                            </div>
-                        `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
-                    } else if (task.type === 'count') {
-                        const remaining = task.required - task.value;
-                        const countHtml = `<div class="flex items-center mt-2">
-                                <span class="text-gray-400 mr-2">完了: ${task.value} / ${task.required}</span>
-                                <button class="count-button bg-blue-500 text-white rounded-full h-8 w-8 text-xl flex items-center justify-center hover:bg-blue-400" data-index="${index}" data-type="${type}">+</button>
-                            </div>
-                            <span class="text-sm text-red-400 mt-1">${remaining > 0 ? `あと${remaining}回` : '完了！'}</span>`;
-                        additionalInputHtml = countHtml;
-                    }
-
-                    li.innerHTML = `
-                        <div class="flex flex-col md:flex-row md:items-start md:justify-between">
-                            <!-- Left side: Checkbox, Icon, Task Name, Additional Inputs -->
-                            <div class="flex items-start flex-grow w-full md:w-2/3">
-                                ${inputHtml}
-                                <span class="task-icon text-blue-400 mt-1">${getIconSvg(task.name)}</span>
-                                <div class="flex-grow cursor-pointer flex flex-col">
-                                    <label for="${type}-task-${index}" class="text-lg flex-grow">
-                                        <span id="${type}-task-text-${index}" class="task-name-editable flex-grow" contenteditable="true">${task.name}</span>
-                                    </label>
-                                    ${additionalInputHtml}
-                                </div>
-                            </div>
-                            <!-- Right side: Notes -->
-                            <div class="mt-2 md:mt-0 md:ml-4 flex-shrink-0 w-full md:w-1/3">
-                                <label class="note-label">備考:</label>
-                                <textarea class="note-input w-full" rows="1" placeholder="メモを入力" data-index="${index}" data-type="${type}" data-key="note">${task.note || ''}</textarea>
-                            </div>
-                        </div>
-                    `;
-                    containerElement.appendChild(li);
-                });
-
-                // Set up event listeners for new inputs
-                containerElement.querySelectorAll('.additional-input, .additional-select').forEach(input => {
-                    input.addEventListener('change', (event) => {
-                        const index = parseInt(event.target.dataset.index, 10);
-                        const type = event.target.dataset.type;
-                        const key = event.target.dataset.key;
-                        const taskList = type === 'daily' ? dailyTasks : summerTasks;
-
-                        if (key === 'min') {
-                            taskList[index].min = event.target.value;
-                        } else if (key === 'sec') {
-                            taskList[index].sec = event.target.value;
-                        } else {
-                            taskList[index][key] = event.target.value;
-                        }
-                        
-                        saveTasks(type, taskList);
-                    });
-                });
-                
-                // Set up event listeners for notes
-                containerElement.querySelectorAll('.note-input').forEach(textarea => {
-                    textarea.addEventListener('change', (event) => {
-                        const index = parseInt(event.target.dataset.index, 10);
-                        const type = event.target.dataset.type;
-                        const key = event.target.dataset.key || 'note';
-                        const taskList = type === 'daily' ? dailyTasks : summerTasks;
-                        taskList[index][key] = event.target.value;
-                        saveTasks(type, taskList);
-                    });
-                });
-
-                // Set up event listeners for count buttons
-                containerElement.querySelectorAll('.count-button').forEach(button => {
-                    button.addEventListener('click', (event) => {
-                        const index = parseInt(event.target.closest('button').dataset.index, 10);
-                        const type = event.target.closest('button').dataset.type;
-                        const taskList = type === 'daily' ? dailyTasks : summerTasks;
-                        if (taskList[index].value < taskList[index].required) {
-                            taskList[index].value++;
-                            if (taskList[index].value === taskList[index].required) {
-                                taskList[index].completed = true;
-                            }
-                            saveTasks(type, taskList);
-                            renderTasks(taskList, containerElement, type);
-                        }
-                    });
-                });
-
-                // Set up event listeners for contenteditable task names
-                containerElement.querySelectorAll('.task-name-editable').forEach(taskNameEl => {
-                    taskNameEl.addEventListener('blur', (event) => {
-                        const newText = event.target.innerText.trim();
-                        const li = event.target.closest('.task-item');
-                        const index = Array.from(li.parentNode.children).indexOf(li);
-                        const type = li.parentNode.id.includes('daily') ? 'daily' : 'summer';
-                        const taskList = type === 'daily' ? dailyTasks : summerTasks;
-                        
-                        if (newText && newText !== taskList[index].name) {
-                            taskList[index].name = newText;
-                            saveTasks(type, taskList);
-                            renderTasks(taskList, type === 'daily' ? checklist : summerVacationChecklist, type);
-                        }
-                    });
-                });
-
-                if (type === 'daily') {
-                    checkCompletion();
-                }
-            }
-
-            // Initial render
-            renderTasks(dailyTasks, checklist, 'daily');
-            renderTasks(summerTasks, summerVacationChecklist, 'summer');
-
-            // Event listener for daily checklist changes
-            checklist.addEventListener('change', (event) => {
-                if (event.target.type === 'checkbox') {
-                    const li = event.target.closest('.task-item');
-                    const index = Array.from(li.parentNode.children).indexOf(li);
-                    const isChecked = event.target.checked;
-                    dailyTasks[index].completed = isChecked;
-                    
-                    if (isChecked) {
-                        li.classList.add('completed');
-                    } else {
-                        li.classList.remove('completed');
-                    }
-                    
-                    saveTasks('daily', dailyTasks);
-                    checkCompletion();
-                }
-            });
-
-            // Event listener for summer vacation checklist changes
-            summerVacationChecklist.addEventListener('change', (event) => {
-                if (event.target.type === 'checkbox') {
-                    const li = event.target.closest('.task-item');
-                    const index = Array.from(li.parentNode.children).indexOf(li);
-                    const isChecked = event.target.checked;
-                    summerTasks[index].completed = isChecked;
-                    
-                    if (isChecked) {
-                        li.classList.add('completed');
-                    } else {
-                        li.classList.remove('completed');
-                    }
-                    
-                    saveTasks('summer', summerTasks);
-                }
-            });
-
-            // Event listener for reset button
-            resetButton.addEventListener('click', () => {
-                dailyTasks.forEach(task => {
-                    task.completed = false;
-                    task.note = '';
-                    // Reset task-specific values
-                    if(task.type === 'reading') {
-                        task.book = '';
-                        task.count = '';
-                    } else if (task.type === 'page-range') {
-                        task.start = '';
-                        task.end = '';
-                    } else if (task.type === 'running') {
-                        task.min = '';
-                        task.sec = '';
-                    } else if (task.type === 'multiplication') {
-                        task.min = '';
-                        task.sec = '';
-                    } else if (task.type === 'math-exam') {
-                        task.year = '';
-                        task.times = '';
-                    } else if (task.type === 'weight' || task.type === 'checkbox') {
-                         task.value = '';
-                    }
-                });
-                saveTasks('daily', dailyTasks);
-                renderTasks(dailyTasks, checklist, 'daily');
-            });
-
-            // Event listener for submit button
-            submitButton.addEventListener('click', async () => {
-                if (GAS_WEB_APP_URL === "ここにGASのURLを貼り付けてください") {
-                    showModal("エラー: HTMLコードにGASのURLが設定されていません。");
-                    return;
-                }
-
-                statusMessage.classList.remove('hidden');
-                statusMessage.className = 'text-center text-sm mt-4 text-gray-400';
-                statusMessage.textContent = 'Slackに送信中...';
-
-                const todaysFeelings = todaysFeelingsSelect.value;
-                const otherFeelings = otherFeelingsNote.value;
-
-                // メッセージを整形
-                let messageText = `KOTARO: *[${currentDateElement.textContent}] 今日のミッション報告！*`;
-
-                // Daily missions
-                if (dailyTasks && dailyTasks.length > 0) {
-                    messageText += `\n\n*◆今日のミッション◆*`;
-                    dailyTasks.forEach(task => {
-                        const status = task.completed ? ':white_check_mark:' : ':x:';
-                        let details = '';
-                        
-                        switch (task.type) {
-                            case 'weight':
-                                if (task.value) details += ` (${task.value} kg)`;
-                                break;
-                            case 'running':
-                                if (task.min || task.sec) details += ` (${task.min || 0}分 ${task.sec || 0}秒)`;
-                                break;
-                            case 'reading':
-                                let readingDetails = [];
-                                if (task.book) readingDetails.push(`『${task.book}』`);
-                                if (task.count) readingDetails.push(`${task.count}回`);
-                                if (readingDetails.length > 0) details += ` (${readingDetails.join(', ')})`;
-                                break;
-                            case 'page-range':
-                                if (task.start && task.end) details += ` (P.${task.start}〜${task.end})`;
-                                break;
-                            case 'multiplication':
-                                if (task.min || task.sec) details += ` (${task.min || 0}分 ${task.sec || 0}秒)`;
-                                break;
-                            case 'math-exam':
-                                if (task.year && task.times) details += ` (${task.year}年 第${task.times}回)`;
-                                break;
-                        }
-                        
-                        messageText += `\n${status} ${task.name}${details}`;
-
-                        if (task.note) {
-                            messageText += `\n    > 備考: ${task.note}`;
-                        }
-                    });
-                }
-                
-                // Summer vacation missions
-                if (summerTasks && summerTasks.length > 0) {
-                    messageText += `\n\n*◆夏休みミッション◆*`;
-                    summerTasks.forEach(task => {
-                        const status = task.completed ? ':white_check_mark:' : ':x:';
-                        let details = '';
-                        if (task.type === 'count') {
-                            details += ` (完了数: ${task.value} / ${task.required})`;
-                        }
-                        
-                        messageText += `\n${status} ${task.name}${details}`;
-
-                        if (task.note) {
-                            messageText += `\n    > 備考: ${task.note}`;
-                        }
-                    });
-                }
-
-                // Feelings
-                if (todaysFeelings) {
-                    const finalFeelings = todaysFeelings === 'その他' ? otherFeelings : todaysFeelings;
-                    messageText += `\n\n*◆今日の感想◆*\n${finalFeelings}`;
-                }
-
-                const payload = {
-                    text: messageText,
-                };
-
-                try {
-                    const response = await fetch(GAS_WEB_APP_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8',
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    statusMessage.className = 'text-center text-sm mt-4 text-green-400';
-                    statusMessage.textContent = 'ミッションをSlackに報告しました！';
-
-                } catch (error) {
-                    statusMessage.className = 'text-center text-sm mt-4 text-red-400';
-                    statusMessage.textContent = '送信に失敗しました。GASの設定やURLを確認してください。';
-                    console.error('送信エラー:', error);
-                }
-            });
-
-            // Event listener for feelings select box
-            todaysFeelingsSelect.addEventListener('change', () => {
-                if (todaysFeelingsSelect.value === 'その他') {
+                // Update UI with the latest data
+                todaysFeelingsSelect.value = todaysFeelings;
+                otherFeelingsNote.value = otherFeelings;
+                if (todaysFeelings === 'その他') {
                     otherFeelingsNote.classList.remove('hidden');
                 } else {
                     otherFeelingsNote.classList.add('hidden');
-                    otherFeelingsNote.value = '';
                 }
-                saveFeelings();
+                renderTasks(dailyTasks, checklist, 'daily');
+                renderTasks(summerTasks, summerVacationChecklist, 'summer');
+                checkCompletion();
+            }, (error) => {
+                console.error("Firestore Listener Error:", error);
+                showModal("データの同期に失敗しました。");
+            });
+        }
+
+        // --- Save Data to Firestore ---
+        async function saveTasksToDB() {
+            if (!db || !userId) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const dataDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks/data`);
+            
+            const dataToSave = {
+                dailyTasks,
+                summerTasks,
+                todaysFeelings,
+                otherFeelings,
+            };
+
+            try {
+                await setDoc(dataDocRef, dataToSave, { merge: true });
+            } catch (error) {
+                console.error("Error saving data:", error);
+                showModal("データの保存に失敗しました。");
+            }
+        }
+
+        // --- UI Functions ---
+        function showModal(message) {
+            modalMessage.textContent = message;
+            customModal.style.display = 'flex';
+        }
+
+        modalOkButton.addEventListener('click', () => {
+            customModal.style.display = 'none';
+        });
+
+        function checkCompletion() {
+            const allCompleted = dailyTasks.every(task => task.completed);
+            if (allCompleted && dailyTasks.length > 0) {
+                completionMessage.classList.remove('hidden');
+                body.style.backgroundImage = completedBackground;
+            } else {
+                completionMessage.classList.add('hidden');
+                body.style.backgroundImage = originalBackground;
+            }
+        }
+        
+        // --- Render Functions (with modifications) ---
+        function renderTasks(tasksToRender, containerElement, type) {
+            containerElement.innerHTML = '';
+            if (!tasksToRender || tasksToRender.length === 0) {
+                containerElement.innerHTML = '<li class="text-center text-gray-500">No missions today.</li>';
+                return;
+            }
+            
+            tasksToRender.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = `task-item p-4 rounded-lg flex flex-col shadow-md ${task.completed ? 'completed' : ''}`;
+                
+                let inputHtml = '';
+                let additionalInputHtml = '';
+                
+                // Task-specific input generation
+                if (task.type === 'checkbox') {
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'weight') {
+                    additionalInputHtml = `
+                        <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1" data-index="${index}" data-type="${type}" data-key="value">
+                            ${Array.from({ length: 101 }, (_, i) => {
+                                const kg = 30 + i * 0.1;
+                                return `<option value="${kg.toFixed(1)}" ${task.value == kg.toFixed(1) ? 'selected' : ''}>${kg.toFixed(1)}kg</option>`;
+                            }).join('')}
+                        </select>
+                    `;
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'running') {
+                    additionalInputHtml = `
+                        <div class="flex items-center space-x-2 mt-2">
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="min">
+                                <option value="">分</option>
+                                ${Array.from({ length: 16 }, (_, i) => `<option value="${5 + i}" ${task.min == 5 + i ? 'selected' : ''}>${5 + i}分</option>`).join('')}
+                            </select>
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="sec">
+                                <option value="">秒</option>
+                                ${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${task.sec == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'reading') {
+                    additionalInputHtml = `
+                        <input type="text" class="additional-input bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" placeholder="読んだ本の内容" value="${task.book || ''}" data-index="${index}" data-type="${type}" data-key="book">
+                        <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" data-index="${index}" data-type="${type}" data-key="count">
+                            <option value="">回数</option>
+                            ${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.count == i + 1 ? 'selected' : ''}>${i + 1}回</option>`).join('')}
+                        </select>
+                    `;
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'page-range') {
+                    additionalInputHtml = `
+                        <div class="flex items-center space-x-2 mt-2">
+                            <label class="text-sm text-gray-400">P</label>
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="start">
+                                <option value="">開始</option>
+                                ${Array.from({ length: task.max }, (_, i) => `<option value="${i + 1}" ${task.start == i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}
+                            </select>
+                            <label class="text-sm text-gray-400">〜P</label>
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="end">
+                                <option value="">終了</option>
+                                ${Array.from({ length: task.max }, (_, i) => `<option value="${i + 1}" ${task.end == i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'multiplication') {
+                    additionalInputHtml = `
+                        <div class="flex items-center space-x-2 mt-2">
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="min">
+                                <option value="">分</option>
+                                ${Array.from({ length: 5 }, (_, i) => `<option value="${i}" ${task.min == i ? 'selected' : ''}>${i}分</option>`).join('')}
+                            </select>
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="sec">
+                                <option value="">秒</option>
+                                ${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${task.sec == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'math-exam') {
+                    additionalInputHtml = `
+                        <div class="flex items-center space-x-2 mt-2">
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="year">
+                                <option value="">年</option>
+                                ${Array.from({ length: 10 }, (_, i) => {
+                                    const year = 2020 + i;
+                                    return `<option value="${year}" ${task.year == year ? 'selected' : ''}>${year}年</option>`;
+                                }).join('')}
+                            </select>
+                            <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="times">
+                                <option value="">回</option>
+                                ${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.times == i + 1 ? 'selected' : ''}>第${i + 1}回</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                    inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
+                } else if (task.type === 'count') {
+                    const remaining = task.required - task.value;
+                    const countHtml = `<div class="flex items-center mt-2">
+                            <span class="text-gray-400 mr-2">完了: ${task.value} / ${task.required}</span>
+                            <button class="count-button bg-blue-500 text-white rounded-full h-8 w-8 text-xl flex items-center justify-center hover:bg-blue-400" data-index="${index}" data-type="${type}">+</button>
+                        </div>
+                        <span class="text-sm text-red-400 mt-1">${remaining > 0 ? `あと${remaining}回` : '完了！'}</span>`;
+                    additionalInputHtml = countHtml;
+                }
+
+                li.innerHTML = `
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between">
+                        <!-- Left side: Checkbox, Icon, Task Name, Additional Inputs -->
+                        <div class="flex items-start flex-grow w-full md:w-2/3">
+                            ${inputHtml}
+                            <span class="task-icon text-blue-400 mt-1">${getIconSvg(task.name)}</span>
+                            <div class="flex-grow cursor-pointer flex flex-col">
+                                <label for="${type}-task-${index}" class="text-lg flex-grow">
+                                    <span id="${type}-task-text-${index}" class="task-name-editable flex-grow" contenteditable="true">${task.name}</span>
+                                </label>
+                                ${additionalInputHtml}
+                            </div>
+                        </div>
+                        <!-- Right side: Notes -->
+                        <div class="mt-2 md:mt-0 md:ml-4 flex-shrink-0 w-full md:w-1/3">
+                            <label class="note-label">備考:</label>
+                            <textarea class="note-input w-full" rows="1" placeholder="メモを入力" data-index="${index}" data-type="${type}" data-key="note">${task.note || ''}</textarea>
+                        </div>
+                    </div>
+                `;
+                containerElement.appendChild(li);
             });
 
-            otherFeelingsNote.addEventListener('change', saveFeelings);
+            // Re-attach all event listeners
+            attachEventListeners(containerElement);
+        }
+
+        function attachEventListeners(containerElement) {
+             containerElement.querySelectorAll('.additional-input, .additional-select').forEach(input => {
+                input.addEventListener('change', (event) => {
+                    const index = parseInt(event.target.dataset.index, 10);
+                    const type = event.target.dataset.type;
+                    const key = event.target.dataset.key;
+                    const taskList = type === 'daily' ? dailyTasks : summerTasks;
+
+                    if (key === 'min') taskList[index].min = event.target.value;
+                    else if (key === 'sec') taskList[index].sec = event.target.value;
+                    else taskList[index][key] = event.target.value;
+                    
+                    saveTasksToDB();
+                });
+            });
+            
+            containerElement.querySelectorAll('.note-input').forEach(textarea => {
+                textarea.addEventListener('change', (event) => {
+                    const index = parseInt(event.target.dataset.index, 10);
+                    const type = event.target.dataset.type;
+                    const taskList = type === 'daily' ? dailyTasks : summerTasks;
+                    taskList[index].note = event.target.value;
+                    saveTasksToDB();
+                });
+            });
+
+            containerElement.querySelectorAll('.count-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const index = parseInt(event.target.dataset.index, 10);
+                    const type = event.target.dataset.type;
+                    const taskList = type === 'daily' ? dailyTasks : summerTasks;
+                    if (taskList[index].value < taskList[index].required) {
+                        taskList[index].value++;
+                        if (taskList[index].value === taskList[index].required) {
+                            taskList[index].completed = true;
+                        }
+                        saveTasksToDB();
+                    }
+                });
+            });
+
+            containerElement.querySelectorAll('.task-name-editable').forEach(taskNameEl => {
+                taskNameEl.addEventListener('blur', (event) => {
+                    const newText = event.target.innerText.trim();
+                    const li = event.target.closest('.task-item');
+                    const index = Array.from(li.parentNode.children).indexOf(li);
+                    const type = li.parentNode.id.includes('daily') ? 'daily' : 'summer';
+                    const taskList = type === 'daily' ? dailyTasks : summerTasks;
+                    
+                    if (newText && newText !== taskList[index].name) {
+                        taskList[index].name = newText;
+                        saveTasksToDB();
+                    }
+                });
+            });
+
+            containerElement.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                 checkbox.addEventListener('change', (event) => {
+                    const li = event.target.closest('.task-item');
+                    const index = Array.from(li.parentNode.children).indexOf(li);
+                    const type = li.parentNode.id.includes('daily') ? 'daily' : 'summer';
+                    const taskList = type === 'daily' ? dailyTasks : summerTasks;
+                    taskList[index].completed = event.target.checked;
+                    saveTasksToDB();
+                });
+            });
+        }
+        
+        // --- Global Event Listeners ---
+        resetButton.addEventListener('click', () => {
+            dailyTasks.forEach(task => {
+                task.completed = false;
+                task.note = '';
+                if(task.type === 'reading') { task.book = ''; task.count = ''; } 
+                else if (task.type === 'page-range') { task.start = ''; task.end = ''; } 
+                else if (task.type === 'running' || task.type === 'multiplication') { task.min = ''; task.sec = ''; } 
+                else if (task.type === 'math-exam') { task.year = ''; task.times = ''; } 
+                else if (task.type === 'weight') { task.value = ''; }
+            });
+            saveTasksToDB();
         });
+
+        submitButton.addEventListener('click', async () => {
+            if (GAS_WEB_APP_URL === "ここにGASのURLを貼り付けてください") {
+                showModal("エラー: HTMLコードにGASのURLが設定されていません。");
+                return;
+            }
+
+            statusMessage.classList.remove('hidden');
+            statusMessage.className = 'text-center text-sm mt-4 text-gray-400';
+            statusMessage.textContent = 'Slackに送信中...';
+
+            let messageText = `KOTARO: *[${currentDateElement.textContent}] 今日のミッション報告！*`;
+
+            if (dailyTasks && dailyTasks.length > 0) {
+                messageText += `\n\n*◆今日のミッション◆*`;
+                dailyTasks.forEach(task => {
+                    const status = task.completed ? ':white_check_mark:' : ':x:';
+                    let details = '';
+                    switch (task.type) {
+                        case 'weight': if (task.value) details += ` (${task.value} kg)`; break;
+                        case 'running': if (task.min || task.sec) details += ` (${task.min || 0}分 ${task.sec || 0}秒)`; break;
+                        case 'reading':
+                            let readingDetails = [];
+                            if (task.book) readingDetails.push(`『${task.book}』`);
+                            if (task.count) readingDetails.push(`${task.count}回`);
+                            if (readingDetails.length > 0) details += ` (${readingDetails.join(', ')})`;
+                            break;
+                        case 'page-range': if (task.start && task.end) details += ` (P.${task.start}〜${task.end})`; break;
+                        case 'multiplication': if (task.min || task.sec) details += ` (${task.min || 0}分 ${task.sec || 0}秒)`; break;
+                        case 'math-exam': if (task.year && task.times) details += ` (${task.year}年 第${task.times}回)`; break;
+                    }
+                    messageText += `\n${status} ${task.name}${details}`;
+                    if (task.note) messageText += `\n    > 備考: ${task.note}`;
+                });
+            }
+            
+            if (summerTasks && summerTasks.length > 0) {
+                messageText += `\n\n*◆夏休みミッション◆*`;
+                summerTasks.forEach(task => {
+                    const status = task.completed ? ':white_check_mark:' : ':x:';
+                    let details = '';
+                    if (task.type === 'count') details += ` (完了数: ${task.value} / ${task.required})`;
+                    messageText += `\n${status} ${task.name}${details}`;
+                    if (task.note) messageText += `\n    > 備考: ${task.note}`;
+                });
+            }
+
+            const finalFeelings = todaysFeelings === 'その他' ? otherFeelings : todaysFeelings;
+            messageText += `\n\n*◆今日の感想◆*\n${finalFeelings}`;
+
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                    body: JSON.stringify({ text: messageText })
+                });
+                statusMessage.className = 'text-center text-sm mt-4 text-green-400';
+                statusMessage.textContent = 'ミッションをSlackに報告しました！';
+            } catch (error) {
+                statusMessage.className = 'text-center text-sm mt-4 text-red-400';
+                statusMessage.textContent = '送信に失敗しました。GASの設定やURLを確認してください。';
+                console.error('送信エラー:', error);
+            }
+        });
+
+        todaysFeelingsSelect.addEventListener('change', () => {
+            todaysFeelings = todaysFeelingsSelect.value;
+            if (todaysFeelings !== 'その他') otherFeelings = '';
+            saveTasksToDB();
+        });
+
+        otherFeelingsNote.addEventListener('change', (e) => {
+            otherFeelings = e.target.value;
+            saveTasksToDB();
+        });
+        
+        // --- App Initialization ---
+        const today = new Date();
+        currentDateElement.textContent = today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+        const summerEndDate = new Date(today.getFullYear(), 7, 31);
+        const remainingDays = Math.ceil((summerEndDate - today) / (1000 * 60 * 60 * 24));
+        daysLeftElement.textContent = `夏休み終了まで、あと ${remainingDays} 日！`;
+
+        initializeFirebase();
+
     </script>
 </body>
 </html>
