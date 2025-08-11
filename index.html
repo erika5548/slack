@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Mission Log</title>
+    <title>KOTARO Space Mission Log</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -110,7 +110,7 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
         .task-icon {
-            margin-right: 1.5rem; /* アイコンとの間隔を調整 */
+            margin-right: 1rem; /* アイコンとの間隔を調整 */
         }
         .additional-input, .additional-select {
             background: transparent;
@@ -170,7 +170,7 @@
 <body class="p-4">
 
     <div id="app" class="container">
-        <h1 class="text-4xl font-bold text-center mb-6 text-blue-400">SPACE MISSION LOG</h1>
+        <h1 class="text-4xl font-bold text-center mb-6 text-blue-400">KOTARO SPACE MISSION LOG</h1>
         <p id="current-date" class="text-center text-xl font-bold text-gray-200 mb-4"></p>
         <p class="text-center text-sm text-gray-400 mb-8">Complete today's missions and aim for the stars!</p>
 
@@ -277,7 +277,7 @@
                     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 14h6.5M14 10h6.5M21 10A9 9 0 0 0 6 3.4M3 14a9 9 0 0 0 15 6.6"></path></svg>`;
                 } else if (name.includes('音読') || name.includes('読書') || name.includes('スキル') || name.includes('ドリ')) {
                     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book-open"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`;
-                } else if (name.includes('算数検定') || name.includes('nobu先生') || name.includes('todo math')) {
+                } else if (name.includes('算数検定') || name.includes('nobu先生') || name.includes('todo math') || name.includes('elsa')) {
                     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit-2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
                 } else if (name.includes('らっこたん') || name.includes('ソロタッチ') || name.includes('thinkthink')) {
                     return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-list"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`;
@@ -308,6 +308,7 @@
                 { name: 'thinkthink', completed: false, value: '', note: '', type: 'checkbox' },
                 { name: '算数検定の問題集', completed: false, year: '', times: '', note: '', type: 'math-exam' },
                 { name: 'nobu先生', completed: false, start: '', end: '', note: '', type: 'page-range', max: 200 },
+                { name: 'ELSA speak', completed: false, value: '', note: '', type: 'checkbox' },
                 { name: 'TODO math', completed: false, value: '', note: '', type: 'checkbox' },
             ];
             
@@ -415,14 +416,14 @@
                 
                 tasksToRender.forEach((task, index) => {
                     const li = document.createElement('li');
-                    li.className = `task-item p-4 rounded-lg flex items-start shadow-md ${task.completed ? 'completed' : ''}`;
+                    li.className = `task-item p-4 rounded-lg flex flex-col shadow-md ${task.completed ? 'completed' : ''}`;
                     
                     let inputHtml = '';
                     let additionalInputHtml = '';
                     
                     // Task-specific input generation
                     if (task.type === 'checkbox') {
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'weight') {
                         additionalInputHtml = `
                             <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1" data-index="${index}" data-type="${type}" data-key="value">
@@ -432,7 +433,7 @@
                                 }).join('')}
                             </select>
                         `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'running') {
                         additionalInputHtml = `
                             <div class="flex items-center space-x-2 mt-2">
@@ -446,7 +447,7 @@
                                 </select>
                             </div>
                         `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'reading') {
                         additionalInputHtml = `
                             <input type="text" class="additional-input bg-transparent border-b-2 border-gray-500 focus:border-blue-400 mt-2 px-2 py-1 w-full" placeholder="読んだ本の内容" value="${task.book}" data-index="${index}" data-type="${type}" data-key="book">
@@ -455,7 +456,7 @@
                                 ${Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}" ${task.count == i + 1 ? 'selected' : ''}>${i + 1}回</option>`).join('')}
                             </select>
                         `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'page-range') {
                         additionalInputHtml = `
                             <div class="flex items-center space-x-2 mt-2">
@@ -471,7 +472,7 @@
                                 </select>
                             </div>
                         `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'multiplication') {
                         additionalInputHtml = `
                             <div class="flex items-center space-x-2 mt-2">
@@ -485,7 +486,7 @@
                                 </select>
                             </div>
                         `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'math-exam') {
                         additionalInputHtml = `
                             <div class="flex items-center space-x-2 mt-2">
@@ -502,7 +503,7 @@
                                 </select>
                             </div>
                         `;
-                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
+                        inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1 mr-4" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'count') {
                         const remaining = task.required - task.value;
                         const countHtml = `<div class="flex items-center mt-2">
@@ -514,19 +515,23 @@
                     }
 
                     li.innerHTML = `
-                        <div class="flex items-center">
-                            ${inputHtml}
-                            <span class="task-icon text-blue-400 mt-1">${getIconSvg(task.name)}</span>
-                            <div class="ml-4 flex-grow cursor-pointer flex flex-col">
-                                <label for="${type}-task-${index}" class="text-lg flex-grow">
-                                    <span id="${type}-task-text-${index}" class="task-name-editable flex-grow" contenteditable="true">${task.name}</span>
-                                </label>
-                                ${additionalInputHtml}
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between">
+                            <!-- Left side: Checkbox, Icon, Task Name, Additional Inputs -->
+                            <div class="flex items-start flex-grow w-full md:w-2/3">
+                                ${inputHtml}
+                                <span class="task-icon text-blue-400 mt-1">${getIconSvg(task.name)}</span>
+                                <div class="flex-grow cursor-pointer flex flex-col">
+                                    <label for="${type}-task-${index}" class="text-lg flex-grow">
+                                        <span id="${type}-task-text-${index}" class="task-name-editable flex-grow" contenteditable="true">${task.name}</span>
+                                    </label>
+                                    ${additionalInputHtml}
+                                </div>
                             </div>
-                        </div>
-                        <div class="mt-2">
-                            <label class="note-label">備考:</label>
-                            <textarea class="note-input w-full" rows="1" placeholder="メモを入力" data-index="${index}" data-type="${type}" data-key="note">${task.note || ''}</textarea>
+                            <!-- Right side: Notes -->
+                            <div class="mt-2 md:mt-0 md:ml-4 flex-shrink-0 w-full md:w-1/3">
+                                <label class="note-label">備考:</label>
+                                <textarea class="note-input w-full" rows="1" placeholder="メモを入力" data-index="${index}" data-type="${type}" data-key="note">${task.note || ''}</textarea>
+                            </div>
                         </div>
                     `;
                     containerElement.appendChild(li);
@@ -688,7 +693,7 @@
                 const otherFeelings = otherFeelingsNote.value;
 
                 // メッセージを整形
-                let messageText = `*[${currentDateElement.textContent}] 今日のミッション報告！*`;
+                let messageText = `KOTARO: *[${currentDateElement.textContent}] 今日のミッション報告！*`;
 
                 // Daily missions
                 if (dailyTasks && dailyTasks.length > 0) {
