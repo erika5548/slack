@@ -271,7 +271,7 @@
             const modalMessage = document.getElementById('modal-message');
             const modalOkButton = document.getElementById('modal-ok-button');
 
-            // ★★★★★ ここに、GASで取得したウェブアプリのURLを貼り付けます ★★★★★
+            // ★★★★★ GASで取得したウェブアプリのURL ★★★★★
             const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxx-PCCM_ZFQ4dvWyukRc2FqZQ8ipSBxEYvjgAjPK2SOeDGP3bmQcjh72bVs6-5qN1v/exec";
             
             const originalBackground = 'url("https://placehold.co/1024x768/000/fff?text=Starfield+Background")';
@@ -325,7 +325,7 @@
                 { name: '音読', completed: false, book: '', count: '', note: '', type: 'reading' },
                 { name: '漢字スキル', completed: false, start: '', end: '', note: '', type: 'page-range', max: 70 },
                 { name: 'ITEM', completed: false, start: '', end: '', note: '', type: 'page-range', max: 250 },
-                { name: '九九チャレンジ', completed: false, value: '', note: '', type: 'multiplication' },
+                { name: '九九チャレンジ', completed: false, min: '', sec: '', note: '', type: 'multiplication' },
                 { name: 'らっこたん', completed: false, value: '', note: '', type: 'checkbox' },
                 { name: 'ソロタッチ', completed: false, value: '', note: '', type: 'checkbox' },
                 { name: 'thinkthink', completed: false, value: '', note: '', type: 'checkbox' },
@@ -496,18 +496,15 @@
                         `;
                         inputHtml = `<input type="checkbox" id="${type}-task-${index}" class="form-checkbox h-6 w-6 mt-1" ${task.completed ? 'checked' : ''}>`;
                     } else if (task.type === 'multiplication') {
-                        const totalSeconds = parseInt(task.value || 0);
-                        const minutes = Math.floor(totalSeconds / 60);
-                        const seconds = totalSeconds % 60;
                         additionalInputHtml = `
                             <div class="flex items-center space-x-2 mt-2">
                                 <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="min">
                                     <option value="">分</option>
-                                    ${Array.from({ length: 5 }, (_, i) => `<option value="${i}" ${minutes == i ? 'selected' : ''}>${i}分</option>`).join('')}
+                                    ${Array.from({ length: 5 }, (_, i) => `<option value="${i}" ${task.min == i ? 'selected' : ''}>${i}分</option>`).join('')}
                                 </select>
                                 <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="sec">
                                     <option value="">秒</option>
-                                    ${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${seconds == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}
+                                    ${Array.from({ length: 60 }, (_, i) => `<option value="${i}" ${task.sec == i ? 'selected' : ''}>${String(i).padStart(2, '0')}秒</option>`).join('')}
                                 </select>
                             </div>
                         `;
@@ -517,7 +514,7 @@
                             <div class="flex items-center space-x-2 mt-2">
                                 <select class="additional-select bg-transparent border-b-2 border-gray-500 focus:border-blue-400 px-2 py-1" data-index="${index}" data-type="${type}" data-key="year">
                                     <option value="">年</option>
-                                    ${Array.from({ length: 5 }, (_, i) => {
+                                    ${Array.from({ length: 10 }, (_, i) => {
                                         const year = 2020 + i;
                                         return `<option value="${year}" ${task.year == year ? 'selected' : ''}>${year}年</option>`;
                                     }).join('')}
@@ -571,16 +568,10 @@
                         const key = event.target.dataset.key;
                         const taskList = type === 'daily' ? dailyTasks : summerTasks;
 
-                        if (taskList[index].type === 'multiplication' || taskList[index].type === 'running') {
-                            if (key === 'min') {
-                                taskList[index].min = event.target.value;
-                            } else if (key === 'sec') {
-                                taskList[index].sec = event.target.value;
-                            }
-                            // Update total value
-                            if (taskList[index].type === 'multiplication') {
-                                taskList[index].value = (parseInt(taskList[index].min || 0) * 60) + parseInt(taskList[index].sec || 0);
-                            }
+                        if (key === 'min') {
+                            taskList[index].min = event.target.value;
+                        } else if (key === 'sec') {
+                            taskList[index].sec = event.target.value;
                         } else {
                             taskList[index][key] = event.target.value;
                         }
@@ -717,7 +708,8 @@
                         task.min = '';
                         task.sec = '';
                     } else if (task.type === 'multiplication') {
-                        task.value = '';
+                        task.min = '';
+                        task.sec = '';
                     } else if (task.type === 'math-exam') {
                         task.year = '';
                         task.times = '';
@@ -751,9 +743,36 @@
                     messageText += `\n\n*◆今日のミッション◆*`;
                     dailyTasks.forEach(task => {
                         const status = task.completed ? ':white_check_mark:' : ':x:';
-                        messageText += `\n${status} ${task.name}`;
+                        let details = '';
+                        
+                        switch (task.type) {
+                            case 'weight':
+                                if (task.value) details += ` (${task.value} kg)`;
+                                break;
+                            case 'running':
+                                if (task.min || task.sec) details += ` (${task.min || 0}分 ${task.sec || 0}秒)`;
+                                break;
+                            case 'reading':
+                                let readingDetails = [];
+                                if (task.book) readingDetails.push(`『${task.book}』`);
+                                if (task.count) readingDetails.push(`${task.count}回`);
+                                if (readingDetails.length > 0) details += ` (${readingDetails.join(', ')})`;
+                                break;
+                            case 'page-range':
+                                if (task.start && task.end) details += ` (P.${task.start}〜${task.end})`;
+                                break;
+                            case 'multiplication':
+                                if (task.min || task.sec) details += ` (${task.min || 0}分 ${task.sec || 0}秒)`;
+                                break;
+                            case 'math-exam':
+                                if (task.year && task.times) details += ` (${task.year}年 第${task.times}回)`;
+                                break;
+                        }
+                        
+                        messageText += `\n${status} ${task.name}${details}`;
+
                         if (task.note) {
-                            messageText += ` (備考: ${task.note})`;
+                            messageText += `\n    > 備考: ${task.note}`;
                         }
                     });
                 }
@@ -763,12 +782,15 @@
                     messageText += `\n\n*◆夏休みミッション◆*`;
                     summerTasks.forEach(task => {
                         const status = task.completed ? ':white_check_mark:' : ':x:';
-                        messageText += `\n${status} ${task.name}`;
+                        let details = '';
                         if (task.type === 'count') {
-                            messageText += ` (完了数: ${task.value} / ${task.required})`;
+                            details += ` (完了数: ${task.value} / ${task.required})`;
                         }
+                        
+                        messageText += `\n${status} ${task.name}${details}`;
+
                         if (task.note) {
-                            messageText += ` (備考: ${task.note})`;
+                            messageText += `\n    > 備考: ${task.note}`;
                         }
                     });
                 }
@@ -786,15 +808,13 @@
                 try {
                     const response = await fetch(GAS_WEB_APP_URL, {
                         method: 'POST',
-                        mode: 'no-cors', // CORSエラーを回避するための設定
+                        mode: 'no-cors',
                         headers: {
                             'Content-Type': 'text/plain;charset=utf-8',
                         },
                         body: JSON.stringify(payload)
                     });
                     
-                    // no-corsモードではレスポンス内容を確認できないため、
-                    // fetchが成功した時点で「送信成功」とみなします。
                     statusMessage.className = 'text-center text-sm mt-4 text-green-400';
                     statusMessage.textContent = 'ミッションをSlackに報告しました！';
 
