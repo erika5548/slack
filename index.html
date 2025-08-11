@@ -17,15 +17,16 @@
             animation: fadeIn 1.5s ease-in-out;
             min-height: 100vh;
             transition: background-image 1s ease-in-out;
+            -webkit-text-size-adjust: 100%; /* iPadでの文字サイズ自動調整を無効化 */
         }
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
         .container {
-            max-width: 600px;
+            max-width: 700px; /* iPad向けに少し幅を広げました */
             margin: 0 auto;
-            padding: 2rem;
+            padding: 2.5rem; /* 余白を調整 */
             background-color: rgba(26, 32, 44, 0.85);
             border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
@@ -44,6 +45,7 @@
             background-color: rgba(45, 55, 72, 0.8);
             border-left: 5px solid #4299e1;
             transition: all 0.3s ease;
+            padding: 1.25rem; /* 内側の余白を広げました */
         }
         .task-item:hover {
             transform: translateY(-3px);
@@ -59,11 +61,13 @@
             color: #718096;
         }
         input[type="checkbox"] {
-            transform: scale(1.5);
+            transform: scale(1.8); /* チェックボックスを大きくしました */
             accent-color: #48bb78;
         }
         .report-button, .reset-button {
             transition: transform 0.2s, box-shadow 0.2s;
+            padding: 1rem 1.5rem; /* ボタンを大きくしました */
+            font-size: 1.1rem;
         }
         .report-button:hover {
             transform: scale(1.05);
@@ -97,7 +101,7 @@
             background: transparent;
             color: inherit;
             outline: none;
-            font-size: 1.125rem;
+            font-size: 1.25rem; /* 文字を大きくしました */
             font-family: 'Orbitron', sans-serif;
             cursor: pointer;
             width: 100%;
@@ -106,31 +110,16 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
         .task-icon {
-            margin-right: 1rem;
-        }
-        #add-task-form {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        #new-task-input {
-            flex-grow: 1;
-        }
-        .delete-button {
-            transition: transform 0.2s;
-        }
-        .delete-button:hover {
-            transform: scale(1.2);
-            color: #e53e3e;
+            margin-right: 1.5rem; /* アイコンとの間隔を調整 */
         }
         .additional-input, .additional-select {
             background: transparent;
             border: 1px solid #4a5568;
-            border-radius: 5px;
-            padding: 0.5rem;
+            border-radius: 8px; /* 角を少し丸く */
+            padding: 0.75rem; /* 入力欄を大きくしました */
             color: #cbd5e0;
-            font-size: 1rem;
-            margin-top: 0.5rem;
+            font-size: 1.1rem; /* 文字を大きくしました */
+            margin-top: 0.75rem;
             font-family: sans-serif;
         }
         .summer-vacation-section {
@@ -142,16 +131,16 @@
             width: 100%;
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid #4a5568;
-            border-radius: 5px;
-            padding: 0.5rem;
+            border-radius: 8px;
+            padding: 0.75rem; /* 入力欄を大きくしました */
             color: #cbd5e0;
-            font-size: 0.9rem;
+            font-size: 1rem; /* 文字を大きくしました */
             margin-top: 0.5rem;
             font-family: sans-serif;
             resize: none;
         }
         .note-label {
-            font-size: 0.8rem;
+            font-size: 0.9rem; /* 文字を大きくしました */
             color: #a0aec0;
             margin-top: 0.5rem;
         }
@@ -184,16 +173,6 @@
         <h1 class="text-4xl font-bold text-center mb-6 text-blue-400">SPACE MISSION LOG</h1>
         <p id="current-date" class="text-center text-xl font-bold text-gray-200 mb-4"></p>
         <p class="text-center text-sm text-gray-400 mb-8">Complete today's missions and aim for the stars!</p>
-
-        <!-- Task add form -->
-        <div id="add-task-form" class="flex flex-col sm:flex-row items-center">
-            <input type="text" id="new-task-input" class="bg-gray-700 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 sm:mb-0" placeholder="Enter new mission...">
-            <button id="add-button" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-full shadow-lg hover:bg-blue-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-            </button>
-        </div>
 
         <ul id="checklist" class="space-y-4">
             <!-- Daily missions will be inserted here -->
@@ -258,8 +237,6 @@
             const resetButton = document.getElementById('reset-button');
             const submitButton = document.getElementById('submit-button');
             const completionMessage = document.getElementById('completion-message');
-            const addButton = document.getElementById('add-button');
-            const newTaskInput = document.getElementById('new-task-input');
             const body = document.body;
             const currentDateElement = document.getElementById('current-date');
             const summerVacationChecklist = document.getElementById('summer-vacation-checklist');
@@ -546,11 +523,6 @@
                                 </label>
                                 ${additionalInputHtml}
                             </div>
-                            <button class="delete-button text-gray-500 ml-4 hover:text-red-500 mt-1" data-index="${index}" data-type="${type}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1H9a1 1 0 00-1 1v3m3-3h.01" />
-                                </svg>
-                            </button>
                         </div>
                         <div class="mt-2">
                             <label class="note-label">備考:</label>
@@ -669,26 +641,6 @@
                     }
                     
                     saveTasks('summer', summerTasks);
-                }
-            });
-
-            // Event listeners for delete buttons
-            checklist.addEventListener('click', (event) => {
-                const deleteButton = event.target.closest('.delete-button');
-                if (deleteButton) {
-                    const index = parseInt(deleteButton.dataset.index, 10);
-                    dailyTasks.splice(index, 1);
-                    saveTasks('daily', dailyTasks);
-                    renderTasks(dailyTasks, checklist, 'daily');
-                }
-            });
-            summerVacationChecklist.addEventListener('click', (event) => {
-                const deleteButton = event.target.closest('.delete-button');
-                if (deleteButton) {
-                    const index = parseInt(deleteButton.dataset.index, 10);
-                    summerTasks.splice(index, 1);
-                    saveTasks('summer', summerTasks);
-                    renderTasks(summerTasks, summerVacationChecklist, 'summer');
                 }
             });
 
@@ -837,24 +789,6 @@
             });
 
             otherFeelingsNote.addEventListener('change', saveFeelings);
-
-            // Event listener for add button
-            addButton.addEventListener('click', () => {
-                const taskName = newTaskInput.value.trim();
-                if (taskName) {
-                    dailyTasks.push({ name: taskName, completed: false, value: '', note: '', type: 'checkbox' });
-                    newTaskInput.value = '';
-                    saveTasks('daily', dailyTasks);
-                    renderTasks(dailyTasks, checklist, 'daily');
-                }
-            });
-
-            // Event listener for Enter key on new task input
-            newTaskInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    addButton.click();
-                }
-            });
         });
     </script>
 </body>
